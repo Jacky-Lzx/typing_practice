@@ -21,23 +21,27 @@ class TypingWindow:
         curses.init_pair(3, curses.COLOR_RED, curses.COLOR_BLACK)
         self.RED_BLACK = curses.color_pair(3)
 
-    def add_text(self) -> None:
+    def add_text(self, file_path: str) -> None:
         self.lines = []
-        with open("main.py", "r") as file_input:
+        with open(file_path, "r") as file_input:
             self.lines = file_input.readlines()
+
+        # remove '\n' in the end of each line
+        for i, line in enumerate(self.lines):
+            self.lines[i] = line[:-1]
 
     def start(self, stdscr: curses.window) -> None:
         lines = self.lines
         window = self.window
         height, width = self.height, self.width
 
-        text_pad = curses.newpad(len(lines) + 1, width - 2)
+        text_pad = curses.newpad(1000, width - 2)
 
         outputs.append(f"len: {len(lines)}")
 
         for i, line in enumerate(lines):
             # text_pad.addstr(1 + i, 1, line)
-            text_pad.addstr(line, curses.A_DIM |
+            text_pad.addstr(line + "\n", curses.A_DIM |
                             curses.color_pair(self.WHITE_BLACK))
 
         stdscr.refresh()
@@ -48,10 +52,11 @@ class TypingWindow:
         column_index = 0
         ch = -1
         current_type_line = ""
+        current_line = lines[line_index]
         while True:
             window.border()
             window.addstr(0, 4, "Typing")
-            window.addstr(0, 100, f"press: {ch}")
+            window.addstr(0, width - 20, f"press: {ch}")
             window.refresh()
 
             text_pad.refresh(0, 0, 1, 1, height - 2, width - 2)
@@ -60,43 +65,16 @@ class TypingWindow:
 
             if ch == 4:  # Ctrl-D
                 break
-
-            if ch == 9:  # Tab
+            elif ch == 9:  # Tab
                 continue
-
-            if ch == ord(lines[line_index][column_index]):
-                text_pad.addch(line_index, column_index, ch,
-                               curses.A_BOLD | self.GREEN_BLACK)
-                column_index += 1
-                current_type_line += chr(ch)
-            else:
-                if ch == 127:  # Backspace
-                    if len(current_type_line) == 0:
-                        pass
-                    else:
-                        text_pad.addch(line_index, column_index - 1,
-                                       lines[line_index][column_index - 1], curses.A_DIM | self.WHITE_BLACK)
-                        column_index -= 1
-                        current_type_line = current_type_line[:-1]
-                else:
-                    text_pad.addch(line_index, column_index, ch,
-                                   curses.A_BOLD | self.RED_BLACK)
-                    column_index += 1
-                    current_type_line += chr(ch)
-
-            if column_index >= len(lines[line_index]):
-                column_index = len(lines[line_index]) - 1
-
-            if ch == 10:  # Enter
-                # delete the new line character
-                current_type_line = current_type_line[:-1]
+            elif ch == 10:  # Enter
                 # draw the color for current line
-                for i in range(len(lines[line_index])):
+                for i in range(len(current_line)):
                     if i >= len(current_type_line):
-                        text_pad.addch(line_index, i, lines[line_index][i],
+                        text_pad.addch(line_index, i, current_line[i],
                                        curses.A_DIM | self.RED_BLACK)
                         continue
-                    if lines[line_index][i] != current_type_line[i]:
+                    if current_line[i] != current_type_line[i]:
                         # draw red color
                         text_pad.addch(line_index, i, current_type_line[i],
                                        curses.A_BOLD | self.RED_BLACK)
@@ -109,6 +87,40 @@ class TypingWindow:
                 column_index = 0
                 typed_lines.append(current_type_line)
                 current_type_line = ""
+                current_line = lines[line_index]
+                continue
+            elif ch == 127:  # Backspace
+                if len(current_type_line) == 0:
+                    pass
+                else:
+                    text_pad.addch(line_index, column_index - 1,
+                                   current_line[column_index - 1], curses.A_DIM | self.WHITE_BLACK)
+                    column_index -= 1
+                    current_type_line = current_type_line[:-1]
+                continue
+
+            if column_index >= len(current_line):
+                continue
+
+            if ch == ord(current_line[column_index]):
+                text_pad.addch(line_index, column_index, ch,
+                               curses.A_BOLD | self.GREEN_BLACK)
+                column_index += 1
+                current_type_line += chr(ch)
+            else:
+                if ch == 127:  # Backspace
+                    if len(current_type_line) == 0:
+                        pass
+                    else:
+                        text_pad.addch(line_index, column_index - 1,
+                                       current_line[column_index - 1], curses.A_DIM | self.WHITE_BLACK)
+                        column_index -= 1
+                        current_type_line = current_type_line[:-1]
+                else:
+                    text_pad.addch(line_index, column_index, ch,
+                                   curses.A_BOLD | self.RED_BLACK)
+                    column_index += 1
+                    current_type_line += chr(ch)
 
         outputs.append(typed_lines)
 
@@ -122,7 +134,7 @@ def main(stdscr: curses.window):
     window.clear()
 
     typing_window = TypingWindow(window)
-    typing_window.add_text()
+    typing_window.add_text("main.py")
     typing_window.start(stdscr)
 
 
