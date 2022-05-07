@@ -41,9 +41,12 @@ def main(stdscr: curses.window):
 
     stdscr.refresh()
 
+    typed_lines = []
+
     line_index = 0
     column_index = 0
     ch = -1
+    current_type_line = ""
     while True:
         window.border()
         window.addstr(0, 4, "Title")
@@ -54,26 +57,53 @@ def main(stdscr: curses.window):
 
         ch = window.getch(1 + line_index, 1 + column_index)
 
+        if ch == 4:
+            break
+
         if ch == ord(lines[line_index][column_index]):
             text_pad.addch(line_index, column_index, ch,
                            curses.A_BOLD | curses.color_pair(GREEN_BLACK))
             column_index += 1
+            current_type_line += chr(ch)
         else:
             if ch == 127:  # Backspace
                 text_pad.addch(line_index, column_index - 1,
                                lines[line_index][column_index - 1], curses.A_DIM | curses.color_pair(WHITE_BLACK))
                 column_index -= 1
+                current_type_line = current_type_line[:-1]
             else:
                 text_pad.addch(line_index, column_index, ch,
                                curses.A_BOLD | curses.color_pair(RED_BLACK))
                 column_index += 1
+                current_type_line += chr(ch)
 
         if column_index >= len(lines[line_index]):
             column_index = len(lines[line_index]) - 1
 
         if ch == 10:
+            # delete the new line character
+            current_type_line = current_type_line[:-1]
+            # draw the color for current line
+            for i in range(len(lines[line_index])):
+                if i >= len(current_type_line):
+                    text_pad.addch(line_index, i, lines[line_index][i],
+                                   curses.A_DIM | curses.color_pair(RED_BLACK))
+                    continue
+                if lines[line_index][i] != current_type_line[i]:
+                    # draw red color
+                    text_pad.addch(line_index, i, current_type_line[i],
+                                   curses.A_BOLD | curses.color_pair(RED_BLACK))
+                else:
+                    # draw green color
+                    text_pad.addch(line_index, i, current_type_line[i],
+                                   curses.A_BOLD | curses.color_pair(GREEN_BLACK))
+
             line_index += 1
             column_index = 0
+            typed_lines.append(current_type_line)
+            current_type_line = ""
+
+    outputs.append(typed_lines)
 
 
 wrapper(main)
